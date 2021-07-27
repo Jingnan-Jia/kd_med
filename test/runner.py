@@ -5,11 +5,7 @@
 
 import unittest
 import coverage
-# import argparse
-#
-# parser = argparse.ArgumentParser(description="Test runner")
-# parser.add_argument('-c', '--coverage', action='store_true')
-# test_args = parser.parse_args()
+
 
 COV_FLAG = True
 if __name__ == "__main__":

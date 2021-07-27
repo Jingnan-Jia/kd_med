@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="kd_med", # Replace with your own username
-    version="0.0.1",
+    version="0.0.2",
     author="Jingnan",
     author_email="jiajingnan2222@gmail.com",
     description="A plug-in for knowledge distillation",

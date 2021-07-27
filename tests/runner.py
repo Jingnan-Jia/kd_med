@@ -24,7 +24,7 @@ if __name__ == "__main__":
         # 命令行模式展示结果
         cov.report()
         # 生成HTML覆盖率报告
-        cov.html_report(directory='./tests/covhtml')
+        # cov.html_report(directory='./tests/covhtml')
         cov.xml_report(outfile='./tests/cov_report.xml')
 
 

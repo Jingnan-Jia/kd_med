@@ -8,6 +8,9 @@ from kd_med.pre_trained_enc import get_enc_t
 
 
 class EncPlusConv(nn.Module):
+    """
+    the out_chn of enc_s must be equal to the in_chn of conv.
+    """
     def __init__(self, enc_s, conv):
         super().__init__()
         self.enc_s = enc_s

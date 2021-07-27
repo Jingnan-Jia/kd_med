@@ -14,8 +14,7 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -f ./tests/cov_report.xml
           echo "Succesful test! Cheers!"
 
-      - name: Start publish package
-      - name: Set up Python
+      - name: Start publish package, set up it at first.
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'

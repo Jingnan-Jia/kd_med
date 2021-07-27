@@ -16,7 +16,7 @@ class EncPlusConv(nn.Module):
         self.enc_s = enc_s
         self.conv = conv
 
-    def __call__(self, x):
+    def forward(self, x):
         out = self.enc_s(x)
         out = self.conv(out)
         return out
@@ -29,7 +29,17 @@ class GetEncSConv:
     enc_t = None
     enc_s = None
     enc_plus_conv = None
+
+    @classmethod
     def get(cls, enc_t: nn.Module, enc_s: nn.Module, dims: int = 3):
+        """
+        Chn_in = 1 always here.
+        :param enc_t:
+        :param enc_s:
+        :param dims:
+        :return:
+        """
+        print(f"cls.enc_t: {cls.enc_t}, cls.enc_s: {cls.enc_s}")
         if cls.enc_t is None and cls.enc_s is None:
             cls.enc_t = enc_t
             cls.enc_s = enc_s

@@ -31,8 +31,8 @@ class TestEncPlusConv(unittest.TestCase):
         out_enc = enc(input_data)
         out_conv = conv(out_enc)
         out_enc_plus_conv = enc_plus_conv(input_data)
-        out_1 = out_conv.clone().cpu().numpy()
-        out_2 = out_enc_plus_conv.clone().cpu().numpy()
+        out_1 = out_conv.clone().detach().cpu().numpy()
+        out_2 = out_enc_plus_conv.clone().detach().cpu().numpy()
 
         self.assertIsNone(np.testing.assert_allclose(out_1, out_2, rtol=1e-5, atol=0))
 

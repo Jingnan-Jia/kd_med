@@ -22,6 +22,9 @@ class EncPlusConv(nn.Module):
         return out
 
 
+
+
+
 class GetEncSConv:
     """
     Using class method to make sure the network only be created once and reusable many times.
@@ -29,6 +32,40 @@ class GetEncSConv:
     enc_t = None
     enc_s = None
     enc_plus_conv = None
+    chn_t = None
+    chn_s = None
+
+
+    @classmethod
+    def set_conv_config(cls, dim1_t, dim1_s):
+        # o = (n - f + 2 * p) / s + 1
+        # f = n - ((o - 1) * s - 2 * p)
+        # p = ((o - 1) * s - n + f)/2
+        if dim1_t == dim1_s:
+            cls.enc_plus_conv = cls.enc_s
+            return cls.enc_plus_conv
+        elif dim1_t > dim1_s:
+            raise Exception('teacher model depth is less than student model')
+        else:  # teacher model is deeper
+            if dim1_s % dim1_t == 0:  # down sample with stride, conv_sz1 is 3, padding is 1.
+                s = dim1_s // dim1_t
+                conv_sz = 3
+                p = 1
+            else:
+                conv_sz = 3
+                s = dim1_s // dim1_t + 1  # down sample using stride at first, pad more if over down-sampling
+                exprected_in_size = s * (dim1_t - 1) + conv_sz
+                if (exprected_in_size - dim1_s) % 2 == 0:
+                    p = (exprected_in_size - dim1_s) // 2
+                else:
+                    p = (exprected_in_size + 1 - dim1_s) // 2
+            if cls.dims == 3:
+                conv = nn.Conv3d(cls.chn_s, cls.chn_t, kernel_size=(conv_sz, conv_sz, conv_sz),
+                                 stride=(s, s, s), padding=p)
+            else:
+                conv = nn.Conv2d(cls.chn_s, cls.chn_t, kernel_size=(conv_sz, conv_sz),
+                                 stride=(s, s), padding=p)
+            cls.enc_plus_conv = EncPlusConv(cls.enc_s, conv)
 
     @classmethod
     def get(cls, enc_t: nn.Module, enc_s: nn.Module, dims: int = 3):
@@ -39,37 +76,27 @@ class GetEncSConv:
         :param dims:
         :return:
         """
-        print(f"cls.enc_t: {cls.enc_t}, cls.enc_s: {cls.enc_s}")
-        if cls.enc_t is None and cls.enc_s is None:
+        # print(f"cls.enc_t: {cls.enc_t}, cls.enc_s: {cls.enc_s}")
+        if cls.enc_t is not enc_t:  # when coming encoder is not the same as the stored one
+
+            cls.dims = dims
             cls.enc_t = enc_t
             cls.enc_s = enc_s
             if dims == 3:
                 input_tmp = torch.ones((2, 1, 128, 128, 128))
                 out_t = cls.enc_t(input_tmp)
                 out_s = cls.enc_s(input_tmp)
-                batch_size, chn_t, dim1_t, dim2_t, dim3_t = out_t.shape
-                batch_size, chn_s, dim1_s, dim2_s, dim3_s = out_s.shape
-                # o = (n - f + 2 * p) / s + 1
-                # f = n - ((o - 1) * s - 2 * p)
-                conv_sz1 = dim1_s - ((dim1_t - 1) * 1 - 2 * 1)  # stride = 1, padding = 1
-                conv_sz2 = dim2_s - ((dim2_t - 1) * 1 - 2 * 1)  # stride = 1, padding = 1
-                conv_sz3 = dim3_s - ((dim3_t - 1) * 1 - 2 * 1)  # stride = 1, padding = 1
-                assert conv_sz1 == conv_sz2 == conv_sz3
-                conv = nn.Conv3d(chn_s, chn_t, kernel_size=conv_sz1, stride=1, padding=1)
+                batch_size, cls.chn_t, dim1_t, dim2_t, dim3_t = out_t.shape
+                batch_size, cls.chn_s, dim1_s, dim2_s, dim3_s = out_s.shape
             else:
                 input_tmp = torch.ones((2, 1, 128, 128))
                 out_t = cls.enc_t(input_tmp)
                 out_s = cls.enc_s(input_tmp)
-                batch_size, chn_t, dim1_t, dim2_t = out_t.shape
-                batch_size, chn_s, dim1_s, dim2_s = out_s.shape
-                # o = (n - f + 2 * p) / s + 1
-                # f = n - ((o - 1) * s - 2 * p)
-                conv_sz1 = dim1_s - ((dim1_t - 1) * 1 - 2 * 1)  # stride = 1, padding = 1
-                conv_sz2 = dim2_s - ((dim2_t - 1) * 1 - 2 * 1)  # stride = 1, padding = 1
-                assert conv_sz1 == conv_sz2
-                conv = nn.Conv2d(chn_s, chn_t, kernel_size=conv_sz1, stride=1, padding=1)
+                batch_size, cls.chn_t, dim1_t, dim2_t = out_t.shape
+                batch_size, cls.chn_s, dim1_s, dim2_s = out_s.shape
 
-            cls.enc_plus_conv = EncPlusConv(cls.enc_s, conv)
+            cls.set_conv_config(dim1_t, dim1_s)
+
         return cls.enc_plus_conv
 
 

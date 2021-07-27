@@ -1,3 +1,5 @@
+numpy
+parameterized
 coverage
-googledrivedownloader
 torch
+googledrivedownloader

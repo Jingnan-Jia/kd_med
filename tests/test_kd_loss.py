@@ -12,7 +12,7 @@ from parameterized import parameterized
 from kd_med.kd_loss import kd_loss
 
 
-class Cnn3_3dEnc(nn.Module):
+class Cnn2_3dEnc(nn.Module):
     def __init__(self, fc1_nodes=1024, fc2_nodes=1024, num_classes: int = 5, base: int = 8, level_node = 0):
         super().__init__()
         self.level_node = level_node
@@ -23,14 +23,14 @@ class Cnn3_3dEnc(nn.Module):
             nn.Conv3d(base, base * 2, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.MaxPool3d(kernel_size=3, stride=2),
-            nn.Conv3d(base * 2, base * 4, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=3, stride=2),
+            # nn.Conv3d(base * 2, base * 4, kernel_size=3, padding=1),
+            # nn.ReLU(inplace=True),
+            # nn.MaxPool3d(kernel_size=3, stride=2),
         )
         self.avgpool = nn.AdaptiveAvgPool3d((6, 6, 6))
         self.classifier = nn.Sequential(
             nn.Dropout(),
-            nn.Linear(base * 4 * 6 * 6 * 6, fc1_nodes),
+            nn.Linear(base * 2 * 6 * 6 * 6, fc1_nodes),
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(fc1_nodes, fc2_nodes),
@@ -120,7 +120,7 @@ class Vgg11_3dEnc(nn.Module):
 
 dims = 3
 batch_x = torch.ones((2, 1, 96, 96, 64))
-enc_s_ls = [Cnn3_3dEnc()]  # todo: VGG11
+enc_s_ls = [Cnn2_3dEnc()]  # todo: VGG11
 enc_t_name_ls = ['resnet3d_18', 'resnet3d_18', 'resnet3d_34','resnet3d_50', 'resnet3d_101']
 
 

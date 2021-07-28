@@ -95,6 +95,14 @@ class GetEncSConv:
 def kd_loss(batch_x: torch.Tensor,
             enc_s: nn.Module,
             net_t_name: str ='resnet3d_34'):
+    """
+    The enc_s will share the same memory with enc_s_conv, and the enc_s_conv will be optimized by the loss of kd.
+    todo: I have to put enc_s_conv to outsize otherwise the last conv will not be updated at all !!!
+    :param batch_x:
+    :param enc_s:
+    :param net_t_name:
+    :return:
+    """
 
     if len(batch_x.shape) == 5:
         dims: int = 3

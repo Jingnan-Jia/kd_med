@@ -45,7 +45,7 @@ class GetEncSConv:
             cls.enc_plus_conv = cls.enc_s
             return cls.enc_plus_conv
         elif dim1_t > dim1_s:
-            raise Exception('teacher model depth is less than student model')
+            raise Exception(f'teacher model depth is less than student model, dim1_t: {dim1_t}, dim1_s: {dim1_s}')
         else:  # teacher model is deeper
             s = math.ceil(dim1_s / dim1_t) # down sample using stride at first, pad more if over down-sampling
             conv_sz = s + 1  # conv size should be bigger than stride

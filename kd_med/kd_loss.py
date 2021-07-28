@@ -2,9 +2,11 @@
 # @Time    : 7/26/21 6:59 PM
 # @Author  : Jingnan
 # @Email   : jiajingnan2222@gmail.com
+import math
+
 import torch
 import torch.nn as nn
-from kd_med.pre_trained_enc import get_enc_t
+from kd_med.pre_trained_enc import pretrained_enc
 
 
 class EncPlusConv(nn.Module):
@@ -22,9 +24,6 @@ class EncPlusConv(nn.Module):
         return out
 
 
-
-
-
 class GetEncSConv:
     """
     Using class method to make sure the network only be created once and reusable many times.
@@ -34,6 +33,7 @@ class GetEncSConv:
     enc_plus_conv = None
     chn_t = None
     chn_s = None
+    dims = 3
 
 
     @classmethod
@@ -41,24 +41,16 @@ class GetEncSConv:
         # o = (n - f + 2 * p) / s + 1
         # f = n - ((o - 1) * s - 2 * p)
         # p = ((o - 1) * s - n + f)/2
-        if dim1_t == dim1_s:
+        if dim1_t == dim1_s:  # no need of conv at all
             cls.enc_plus_conv = cls.enc_s
             return cls.enc_plus_conv
         elif dim1_t > dim1_s:
             raise Exception('teacher model depth is less than student model')
         else:  # teacher model is deeper
-            if dim1_s % dim1_t == 0:  # down sample with stride, conv_sz1 is 3, padding is 1.
-                s = dim1_s // dim1_t
-                conv_sz = 3
-                p = 1
-            else:
-                conv_sz = 3
-                s = dim1_s // dim1_t + 1  # down sample using stride at first, pad more if over down-sampling
-                exprected_in_size = s * (dim1_t - 1) + conv_sz
-                if (exprected_in_size - dim1_s) % 2 == 0:
-                    p = (exprected_in_size - dim1_s) // 2
-                else:
-                    p = (exprected_in_size + 1 - dim1_s) // 2
+            s = math.ceil(dim1_s / dim1_t) # down sample using stride at first, pad more if over down-sampling
+            conv_sz = s + 1  # conv size should be bigger than stride
+            exprected_in_size = s * (dim1_t - 1) + conv_sz
+            p = math.ceil((exprected_in_size - dim1_s) / 2)
             if cls.dims == 3:
                 conv = nn.Conv3d(cls.chn_s, cls.chn_t, kernel_size=(conv_sz, conv_sz, conv_sz),
                                  stride=(s, s, s), padding=p)
@@ -110,7 +102,7 @@ def kd_loss(batch_x: torch.Tensor,
     else:
         raise Exception(f'shape of batch_x: {batch_x.shape} is not correct')
 
-    enc_t = get_enc_t(net_t_name)
+    enc_t = pretrained_enc(net_t_name)
     enc_s = GetEncSConv().get(enc_t, enc_s, dims)
     with torch.no_grad():
         out_t = enc_t(batch_x)

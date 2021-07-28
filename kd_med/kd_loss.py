@@ -6,7 +6,7 @@ import math
 
 import torch
 import torch.nn as nn
-from kd_med.pre_trained_enc import pretrained_enc
+from kd_med.pre_trained_enc import PreTrainedEnc
 
 
 class EncPlusConv(nn.Module):
@@ -94,7 +94,8 @@ class GetEncSConv:
 
 def kd_loss(batch_x: torch.Tensor,
             enc_s: nn.Module,
-            net_t_name: str ='resnet3d'):
+            net_t_name: str ='resnet3d_34'):
+
     if len(batch_x.shape) == 5:
         dims: int = 3
     elif len(batch_x.shape) == 4:
@@ -102,11 +103,12 @@ def kd_loss(batch_x: torch.Tensor,
     else:
         raise Exception(f'shape of batch_x: {batch_x.shape} is not correct')
 
-    enc_t = pretrained_enc(net_t_name)
-    enc_s = GetEncSConv().get(enc_t, enc_s, dims)
+    enc_t = PreTrainedEnc.get(net_t_name)
+    # enc_s share the same memory with the enc_s in enc_s_conv, only create it once and reuse it
+    enc_s_conv = GetEncSConv().get(enc_t, enc_s, dims)
     with torch.no_grad():
         out_t = enc_t(batch_x)
-    out_s = enc_s(batch_x)
+    out_s = enc_s_conv(batch_x)
     loss = nn.MSELoss()
     kd_loss = loss(out_t, out_s)
     return kd_loss

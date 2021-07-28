@@ -17,7 +17,7 @@ class Option:
         pass
 
 
-def download_weights(weights_dir: str):
+def download_weights_if_needed(weights_dir: str):
     if not os.path.isdir(weights_dir):
         os.makedirs(weights_dir)
     # download weights and unzip weights
@@ -58,90 +58,116 @@ class UNet3DEnc(UNet3D):
         return self._forward_impl(x)
 
 
-# class ResNet3DEnc(ResNet):
-#     def __init__(self, output_layer = 'conv_seg'):
-#         super().__init__()
-#         self.output_layer = output_layer
-#         self._layers = []
-#         for l in list(self._modules.keys()):
-#             self._layers.append(l)
-#             if l == output_layer:
-#                 break
-#         self.layers = OrderedDict(zip(self._layers, [getattr(self, l) for l in self._layers]))
-#
-#     def _forward_impl(self, x):
-#         for l in self._layers:
-#             x = self.layers[l](x)
-#         return x
-#
-#     def forward(self, x):
-#         return self._forward_impl(x)
-
-
-
 def rename_layers(loaded_dict):
     state_dict = loaded_dict['state_dict']
-    unParalled_state_dict = {}
+    unParalled_state_dict = OrderedDict()
     for key in state_dict.keys():
         unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
     return unParalled_state_dict
 
 
-def pretrained_enc(net_name: str):
-    """
-    Availabel net_name:
-    Med3D (https://arxiv.org/pdf/1904.00625.pdf):
-        resnet3d_10, resnet3d_18, resnet3d_34, resnet3d_50, resnet3d_101, resnet3d_152, resnet3d_200
-    Model Genesis (https://arxiv.org/pdf/1908.06912.pdf):
-        unet3d
-        resnet2d_18  # I do not have its pre-trained weights yet, because it is not released.
-
-opt: require following values: model, model_depth, input_W, input_H, input_D,
-    resnet_shortcut, no_cuda, n_seg_classes, phase, pretrain_path
-
-    :param net_name:
-    :return:
-    """
-    # weights_dir = 'pretrained_weights'
+class PreTrainedEnc:
     weights_dir = os.path.join(os.path.expanduser('~/.cache'), 'kd_med', 'pretrained_weights')
+    enc = {}
 
-    download_weights(weights_dir)
+    @classmethod
+    def get(cls, net_name: str):
+        if net_name not in cls.enc:
+            download_weights_if_needed(cls.weights_dir)
+            opt = Option()
+            if 'resnet3d' in net_name:
+                opt.model = 'resnet'  # do not change it
+                opt.model_depth = int(net_name.split('_')[-1])
+                if opt.model_depth in [18, 34]:  # https://github.com/Tencent/MedicalNet
+                    opt.resnet_shortcut = 'A'
+                else:
+                    opt.resnet_shortcut = 'B'
+                opt.no_cuda = True  # I think it does not matter
+                opt.n_seg_classes = 2  # I think it does not matter
+                if opt.model_depth in [10, 18, 34, 50]:
+                    opt.pretrain_path = cls.weights_dir + "/resnet_" + str(opt.model_depth) + "_23dataset.pth"  # reset if needed
+                else:
+                    opt.pretrain_path = cls.weights_dir + "/resnet_" + str(opt.model_depth) + ".pth"  # reset if needed
 
-    opt = Option()
-    if 'resnet3d' in net_name:
-        opt.model = 'resnet'  # do not change it
-        opt.model_depth = int(net_name.split('_')[-1])
-        if opt.model_depth in [18, 34]:  # https://github.com/Tencent/MedicalNet
-            opt.resnet_shortcut = 'A'
-        else:
-            opt.resnet_shortcut = 'B'
-        opt.no_cuda = True  # I think it does not matter
-        opt.n_seg_classes = 2  # I think it does not matter
-        if opt.model_depth in [10, 18, 34, 50]:
-            opt.pretrain_path = weights_dir + "/resnet_" + str(opt.model_depth) + "_23dataset.pth"  # reset if needed
-        else:
-            opt.pretrain_path = weights_dir + "/resnet_" + str(opt.model_depth) + ".pth"  # reset if needed
+                enc = generate_model(opt)  # generate resnet encoder
+                # enc = get_enc(enc, 'conv_seg')
+                enc.load_state_dict(rename_layers(torch.load(opt.pretrain_path, map_location=torch.device('cpu'))))
+
+            elif 'resnet2d' in net_name:
+                raise NotImplementedError
+            elif 'unet3d' == net_name:
+                weights_fpath = cls.weights_dir + '/Genesis_Chest_CT.pt'
+                base_model = UNet3DEnc()  # Unet encoder
+
+                # Load pre-trained weights
+                checkpoint = torch.load(weights_fpath, map_location=torch.device('cpu'))
+                # state_dict = checkpoint['state_dict']
+                # unParalled_state_dict = {}
+                # for key in state_dict.keys():
+                #     unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
+                base_model.load_state_dict(rename_layers(checkpoint))
+                enc = base_model  # encoder
+            else:
+                raise Exception(f'wrong net name {net_name}')
+            cls.enc[net_name] = enc
+        return cls.enc[net_name]
 
 
-        enc = generate_model(opt)  # generate resnet encoder
-        # enc = get_enc(enc, 'conv_seg')
-        enc.load_state_dict(rename_layers(torch.load(opt.pretrain_path)))
-
-    elif 'resnet2d' in net_name:
-        raise NotImplementedError
-    elif 'unet3d' == net_name:
-        weights_fpath = weights_dir + '/Genesis_Chest_CT.pt'
-        base_model = UNet3DEnc()  # Unet encoder
-
-        # Load pre-trained weights
-        checkpoint = torch.load(weights_fpath)
-        # state_dict = checkpoint['state_dict']
-        # unParalled_state_dict = {}
-        # for key in state_dict.keys():
-        #     unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
-        base_model.load_state_dict(rename_layers(checkpoint))
-        enc = base_model  # encoder
-    else:
-        raise Exception(f'wrong net name {net_name}')
-    return enc
+# def pretrained_enc(net_name: str):
+#     """
+#     Availabel net_name:
+#     Med3D (https://arxiv.org/pdf/1904.00625.pdf):
+#         resnet3d_10, resnet3d_18, resnet3d_34, resnet3d_50, resnet3d_101, resnet3d_152, resnet3d_200
+#     Model Genesis (https://arxiv.org/pdf/1908.06912.pdf):
+#         unet3d
+#         resnet2d_18  # I do not have its pre-trained weights yet, because it is not released.
+#
+# opt: require following values: model, model_depth, input_W, input_H, input_D,
+#     resnet_shortcut, no_cuda, n_seg_classes, phase, pretrain_path
+#
+#     :param net_name:
+#     :return:
+#     """
+#     # weights_dir = 'pretrained_weights'
+#     weights_dir = os.path.join(os.path.expanduser('~/.cache'), 'kd_med', 'pretrained_weights')
+#
+#     download_weights(weights_dir)
+#
+#     opt = Option()
+#     if 'resnet3d' in net_name:
+#         opt.model = 'resnet'  # do not change it
+#         opt.model_depth = int(net_name.split('_')[-1])
+#         if opt.model_depth in [18, 34]:  # https://github.com/Tencent/MedicalNet
+#             opt.resnet_shortcut = 'A'
+#         else:
+#             opt.resnet_shortcut = 'B'
+#         opt.no_cuda = True  # I think it does not matter
+#         opt.n_seg_classes = 2  # I think it does not matter
+#         if opt.model_depth in [10, 18, 34, 50]:
+#             opt.pretrain_path = weights_dir + "/resnet_" + str(opt.model_depth) + "_23dataset.pth"  # reset if needed
+#         else:
+#             opt.pretrain_path = weights_dir + "/resnet_" + str(opt.model_depth) + ".pth"  # reset if needed
+#
+#
+#         enc = generate_model(opt)  # generate resnet encoder
+#         # enc = get_enc(enc, 'conv_seg')
+#         enc.load_state_dict(rename_layers(torch.load(opt.pretrain_path)), map_location=torch.device('cpu'))
+#
+#     elif 'resnet2d' in net_name:
+#         raise NotImplementedError
+#     elif 'unet3d' == net_name:
+#         weights_fpath = weights_dir + '/Genesis_Chest_CT.pt'
+#         base_model = UNet3DEnc()  # Unet encoder
+#
+#         # Load pre-trained weights
+#         checkpoint = torch.load(weights_fpath)
+#         # state_dict = checkpoint['state_dict']
+#         # unParalled_state_dict = {}
+#         # for key in state_dict.keys():
+#         #     unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
+#         base_model.load_state_dict(rename_layers(checkpoint), map_location=torch.device('cpu'))
+#         enc = base_model  # encoder
+#     else:
+#         raise Exception(f'wrong net name {net_name}')
+#     return enc
 

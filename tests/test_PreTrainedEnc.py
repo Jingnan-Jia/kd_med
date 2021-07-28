@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 from parameterized import parameterized
-from kd_med.pre_trained_enc import pretrained_enc, UNet3DEnc
+from kd_med.pre_trained_enc import PreTrainedEnc, UNet3DEnc
 from kd_med import resnet3d
 from kd_med.unet3d import UNet3D
 
@@ -26,20 +26,23 @@ TEST_CASE_7 = ["resnet3d_200", resnet3d.resnet200(shortcut_type='B', num_seg_cla
 TEST_CASE_8 = ["unet3d", UNet3DEnc()]
 
 
-class Testpretrained_enc(unittest.TestCase):
+class TestPreTrainedEnc(unittest.TestCase):
     @parameterized.expand([TEST_CASE_1, TEST_CASE_2, TEST_CASE_3, TEST_CASE_4,
                            TEST_CASE_5, TEST_CASE_6, TEST_CASE_7, TEST_CASE_8])
-    def test_pretrained_enc(self, net_name, expected_net):
-        net = pretrained_enc(net_name)
-        # net_structure = [l for l in net.modules()]
+    def test_PreTrainedEnc(self, net_name, expected_net):
+        net = PreTrainedEnc().get(net_name)
         layer_names = [name for name, param in net.named_parameters()]
         expected_names = [name for name, param in expected_net.named_parameters()]
-        # expected_structure = [l for l in expected_net.modules()]
-        # print(f'len_net: {len(net_structure)}')
-        # print(f'len_exp: {len(expected_structure)}')
         self.assertEqual(layer_names, expected_names)
-        # net.parameters()
 
+    @parameterized.expand([TEST_CASE_1, TEST_CASE_2, TEST_CASE_3, TEST_CASE_4,
+                           TEST_CASE_5, TEST_CASE_6, TEST_CASE_7, TEST_CASE_8])
+    def test_PreTrainedEnc_same_weights(self, net_name, expected_net):
+        net1 = PreTrainedEnc().get(net_name)
+        net2 = PreTrainedEnc().get(net_name)
+        net3 = PreTrainedEnc().get(net_name)
+        self.assertIs(net1, net2)
+        self.assertIs(net1, net3)
 
 
 if __name__ == "__main__":

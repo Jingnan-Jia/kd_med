@@ -7,9 +7,10 @@ import tempfile
 import os
 import torch
 import torch.nn as nn
-
+import copy
 from parameterized import parameterized
-from kd_med.kd_loss import kd_loss
+from kd_med.kd_loss import kd_loss, GetEncSConv
+from kd_med.pre_trained_enc import PreTrainedEnc
 
 
 class Cnn2_3dEnc(nn.Module):
@@ -27,17 +28,17 @@ class Cnn2_3dEnc(nn.Module):
             # nn.ReLU(inplace=True),
             # nn.MaxPool3d(kernel_size=3, stride=2),
         )
-        self.avgpool = nn.AdaptiveAvgPool3d((6, 6, 6))
-        self.classifier = nn.Sequential(
-            nn.Dropout(),
-            nn.Linear(base * 2 * 6 * 6 * 6, fc1_nodes),
-            nn.ReLU(inplace=True),
-            nn.Dropout(),
-            nn.Linear(fc1_nodes, fc2_nodes),
-            nn.ReLU(inplace=True),
-            nn.Dropout(),
-            nn.Linear(fc2_nodes, num_classes),
-        )
+        # self.avgpool = nn.AdaptiveAvgPool3d((6, 6, 6))
+        # self.classifier = nn.Sequential(
+        #     nn.Dropout(),
+        #     nn.Linear(base * 2 * 6 * 6 * 6, fc1_nodes),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout(),
+        #     nn.Linear(fc1_nodes, fc2_nodes),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout(),
+        #     nn.Linear(fc2_nodes, num_classes),
+        # )
 
     def forward(self, input):  # input would be a tuple of size (1,) if only one element is input
         if self.level_node == 0:
@@ -119,7 +120,7 @@ class Vgg11_3dEnc(nn.Module):
         return x
 
 dims = 3
-batch_x = torch.ones((2, 1, 96, 96, 64))
+batch_x = torch.rand((2, 1, 96, 96, 64))
 enc_s_ls = [Cnn2_3dEnc()]  # todo: VGG11
 enc_t_name_ls = ['resnet3d_18', 'resnet3d_18', 'resnet3d_34','resnet3d_50', 'resnet3d_101']
 
@@ -129,7 +130,32 @@ class Testkd_loss(unittest.TestCase):
     def test_kd_loss(self):
         for enc_s in enc_s_ls:
             for enc_t_name in enc_t_name_ls:
-                kd_loss(batch_x, enc_s, enc_t_name)
+                enc_t = PreTrainedEnc.get(enc_t_name)
+                enc_s_conv = GetEncSConv().get(enc_t, enc_s, dims)
+
+                enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
+                enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
+
+                loss = kd_loss(batch_x, enc_t, enc_s_conv)
+                opt = torch.optim.Adam(enc_s_conv.parameters(), lr=0.001)
+
+
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+
+                for par, exp_par in zip(enc_t_parameters, enc_t.parameters()):
+                    self.assertTrue(torch.all(torch.eq(par.data, exp_par.data)).item())
+                    self.assertIsNone(par.grad)
+                    self.assertIsNone(exp_par.grad)
+
+                NotAllEqual = False
+                for par, exp_par in zip(enc_s_conv_parameters, enc_s_conv.parameters()):
+                    if not torch.all(torch.eq(par.data, exp_par.data)).item():
+                        NotAllEqual = True
+                    self.assertIsNone(par.grad)
+                    self.assertIsNotNone(exp_par.grad)
+                self.assertTrue(NotAllEqual)
 
 
 

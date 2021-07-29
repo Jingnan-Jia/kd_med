@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 from parameterized import parameterized
-from kd_med.pre_trained_enc import PreTrainedEnc, UNet3DEnc
+from kd_med.pre_trained_enc import PreTrainedEnc
 from kd_med import resnet3d
 from kd_med.unet3d import UNet3D
 
@@ -23,7 +23,7 @@ TEST_CASE_4 = ["resnet3d_50", resnet3d.resnet50(shortcut_type='B', num_seg_class
 TEST_CASE_5 = ["resnet3d_101", resnet3d.resnet101(shortcut_type='B', num_seg_classes=99)]
 TEST_CASE_6 = ["resnet3d_152", resnet3d.resnet152(shortcut_type='B', num_seg_classes=99)]
 TEST_CASE_7 = ["resnet3d_200", resnet3d.resnet200(shortcut_type='B', num_seg_classes=99)]
-TEST_CASE_8 = ["unet3d", UNet3DEnc()]
+TEST_CASE_8 = ["unet3d", UNet3D()]
 
 
 class TestPreTrainedEnc(unittest.TestCase):

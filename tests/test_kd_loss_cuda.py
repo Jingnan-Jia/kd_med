@@ -125,37 +125,51 @@ enc_s_ls = [Cnn2_3dEnc()]  # todo: VGG11
 enc_t_name_ls = ['resnet3d_18', 'resnet3d_18', 'resnet3d_34','resnet3d_50', 'resnet3d_101']
 
 
-
-class Testkd_loss(unittest.TestCase):
-    def test_kd_loss(self):
+class Testkd_loss_cuda(unittest.TestCase):
+    def test_kd_loss_cuda(self):
         batch_x = torch.rand((2, 1, 96, 96, 64))
 
-        for enc_s in enc_s_ls:
-            for enc_t_name in enc_t_name_ls:
-                enc_t = PreTrainedEnc.get(enc_t_name)
-                enc_s_conv = GetEncSConv().get(enc_t, enc_s, dims)
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            scaler = torch.cuda.amp.GradScaler()
+            for enc_s in enc_s_ls:
+                for enc_t_name in enc_t_name_ls:
+                    enc_t = PreTrainedEnc.get(enc_t_name, no_cuda=False)
+                    enc_t.to(device)
+                    enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
 
-                enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
-                enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
 
-                loss = kd_loss(batch_x, enc_t, enc_s_conv)
-                opt = torch.optim.Adam(enc_s_conv.parameters(), lr=0.001)
-                opt.zero_grad()
-                loss.backward()
-                opt.step()
+                    enc_s_conv = GetEncSConv().get(enc_t, enc_s, dims, no_cuda=False)
+                    enc_s_conv.to(device)
 
-                for par, exp_par in zip(enc_t_parameters, enc_t.parameters()):
-                    self.assertTrue(torch.all(torch.eq(par.data, exp_par.data)).item())
-                    self.assertIsNone(par.grad)
-                    self.assertIsNone(exp_par.grad)
+                    opt = torch.optim.Adam(enc_s_conv.parameters(), lr=0.001)
 
-                NotAllEqual = False
-                for par, exp_par in zip(enc_s_conv_parameters, enc_s_conv.parameters()):
-                    if not torch.all(torch.eq(par.data, exp_par.data)).item():
-                        NotAllEqual = True
-                    self.assertIsNone(par.grad)
-                    self.assertIsNotNone(exp_par.grad)
-                self.assertTrue(NotAllEqual)
+                    batch_x = batch_x.to(device)
+
+                    enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
+
+                    enc_t = PreTrainedEnc.get(enc_t_name, no_cuda=False)
+                    enc_t.to(device)
+
+                    loss = kd_loss(batch_x, enc_t, enc_s_conv, cuda=False)
+
+                    opt.zero_grad()
+                    scaler.scale(loss).backward()
+                    scaler.step(opt)
+                    scaler.update()
+
+                    for par, exp_par in zip(enc_t_parameters, enc_t.parameters()):
+                        self.assertTrue(torch.all(torch.eq(par.data, exp_par.data)).item())
+                        self.assertIsNone(par.grad)
+                        self.assertIsNone(exp_par.grad)
+
+                    NotAllEqual = False
+                    for par, exp_par in zip(enc_s_conv_parameters, enc_s_conv.parameters()):
+                        if not torch.all(torch.eq(par.data, exp_par.data)).item():
+                            NotAllEqual = True
+                        self.assertIsNone(par.grad)
+                        self.assertIsNotNone(exp_par.grad)
+                    self.assertTrue(NotAllEqual)
 
 
 

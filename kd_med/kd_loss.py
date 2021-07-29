@@ -60,7 +60,7 @@ class GetEncSConv:
             cls.enc_plus_conv = EncPlusConv(cls.enc_s, conv)
 
     @classmethod
-    def get(cls, enc_t: nn.Module, enc_s: nn.Module, dims: int = 3):
+    def get(cls, enc_t: nn.Module, enc_s: nn.Module, dims: int = 3, no_cuda: bool = True):
         """
         Chn_in = 1 always here.
         :param enc_t:
@@ -74,14 +74,26 @@ class GetEncSConv:
             cls.dims = dims
             cls.enc_t = enc_t
             cls.enc_s = enc_s
+            # cls.enc_t.cpu()
+            # cls.enc_s.cpu()
             if dims == 3:
                 input_tmp = torch.ones((2, 1, 128, 128, 128))
+                if not no_cuda:
+                    device = torch.device("cuda")
+                    cls.enc_t.to(device)
+                    cls.enc_s.to(device)
+                    input_tmp = input_tmp.to(device)
                 out_t = cls.enc_t(input_tmp)
                 out_s = cls.enc_s(input_tmp)
                 batch_size, cls.chn_t, dim1_t, dim2_t, dim3_t = out_t.shape
                 batch_size, cls.chn_s, dim1_s, dim2_s, dim3_s = out_s.shape
             else:
                 input_tmp = torch.ones((2, 1, 128, 128))
+                if not no_cuda:
+                    device = torch.device("cuda")
+                    cls.enc_t.to(device)
+                    cls.enc_s.to(device)
+                    input_tmp = input_tmp.to(device)
                 out_t = cls.enc_t(input_tmp)
                 out_s = cls.enc_s(input_tmp)
                 batch_size, cls.chn_t, dim1_t, dim2_t = out_t.shape
@@ -109,6 +121,7 @@ def kd_loss(batch_x: torch.Tensor,
     if cuda:
         with torch.cuda.amp.autocast():
             with torch.no_grad():
+                # batch_x.to(torch.device("cuda"))
                 out_t = enc_t(batch_x)
     else:
         with torch.no_grad():

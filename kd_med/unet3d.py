@@ -125,10 +125,10 @@ class UNet3D(nn.Module):
         self.down_tr256 = DownTransition(128,2,act)
         self.down_tr512 = DownTransition(256,3,act)
 
-        self.up_tr256 = UpTransition(512, 512,2,act)
-        self.up_tr128 = UpTransition(256,256, 1,act)
-        self.up_tr64 = UpTransition(128,128,0,act)
-        self.out_tr = OutputTransition(64, n_class)
+        # self.up_tr256 = UpTransition(512, 512,2,act)
+        # self.up_tr128 = UpTransition(256,256, 1,act)
+        # self.up_tr64 = UpTransition(128,128,0,act)
+        # self.out_tr = OutputTransition(64, n_class)
 
 
     def forward(self, x):
@@ -137,9 +137,9 @@ class UNet3D(nn.Module):
         self.out256,self.skip_out256 = self.down_tr256(self.out128)
         self.out512,self.skip_out512 = self.down_tr512(self.out256)
 
-        self.out_up_256 = self.up_tr256(self.out512,self.skip_out256)
-        self.out_up_128 = self.up_tr128(self.out_up_256, self.skip_out128)
-        self.out_up_64 = self.up_tr64(self.out_up_128, self.skip_out64)
-        self.out = self.out_tr(self.out_up_64)
+        # self.out_up_256 = self.up_tr256(self.out512,self.skip_out256)
+        # self.out_up_128 = self.up_tr128(self.out_up_256, self.skip_out128)
+        # self.out_up_64 = self.up_tr64(self.out_up_128, self.skip_out64)
+        # self.out = self.out_tr(self.out_up_64)
 
-        return self.out
+        return self.out512

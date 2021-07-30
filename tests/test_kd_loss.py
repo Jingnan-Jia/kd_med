@@ -9,8 +9,8 @@ import torch
 import torch.nn as nn
 import copy
 from parameterized import parameterized
-from kd_med.kd_loss import kd_loss, GetEncSConv
-from kd_med.pre_trained_enc import PreTrainedEnc
+from kd_med.kd_loss import kd_loss, get_enc_plus_conv
+from kd_med.pre_trained_enc import pre_trained_enc
 
 
 class Cnn2_3dEnc(nn.Module):
@@ -132,8 +132,8 @@ class Testkd_loss(unittest.TestCase):
 
         for enc_s in enc_s_ls:
             for enc_t_name in enc_t_name_ls:
-                enc_t = PreTrainedEnc.get(enc_t_name)
-                enc_s_conv = GetEncSConv().get(enc_t, enc_s, dims)
+                enc_t = pre_trained_enc(enc_t_name)
+                enc_s_conv = get_enc_plus_conv(enc_t, enc_s, dims)
 
                 enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
                 enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))

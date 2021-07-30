@@ -9,8 +9,13 @@ import torch
 import torch.nn as nn
 import copy
 from parameterized import parameterized
-from kd_med.kd_loss import kd_loss, GetEncSConv
-from kd_med.pre_trained_enc import PreTrainedEnc
+import importlib
+import sys
+# importlib.reload('kd_med')
+import kd_med
+
+# from kd_med.pre_trained_enc import pre_trained_enc
+
 
 
 class Cnn2_3dEnc(nn.Module):
@@ -134,24 +139,18 @@ class Testkd_loss_cuda(unittest.TestCase):
             scaler = torch.cuda.amp.GradScaler()
             for enc_s in enc_s_ls:
                 for enc_t_name in enc_t_name_ls:
-                    enc_t = PreTrainedEnc.get(enc_t_name, no_cuda=False)
+                    enc_t = kd_med.pre_trained_enc(enc_t_name, no_cuda=False)
                     enc_t.to(device)
                     enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
 
-
-                    enc_s_conv = GetEncSConv().get(enc_t, enc_s, dims, no_cuda=False)
+                    enc_s_conv = kd_med.get_enc_plus_conv(enc_t, enc_s, dims, no_cuda=False)
                     enc_s_conv.to(device)
+                    enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
 
                     opt = torch.optim.Adam(enc_s_conv.parameters(), lr=0.001)
 
                     batch_x = batch_x.to(device)
-
-                    enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
-
-                    enc_t = PreTrainedEnc.get(enc_t_name, no_cuda=False)
-                    enc_t.to(device)
-
-                    loss = kd_loss(batch_x, enc_t, enc_s_conv, cuda=False)
+                    loss = kd_med.kd_loss(batch_x, enc_t, enc_s_conv, cuda=False)
 
                     opt.zero_grad()
                     scaler.scale(loss).backward()

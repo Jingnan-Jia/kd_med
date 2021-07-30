@@ -9,7 +9,7 @@ import torch.nn as nn
 from kd_med.pre_trained_enc import pre_trained_enc
 
 
-class EncPlusConv(nn.Module):
+class EncPlusConvBase(nn.Module):
     """
     the out_chn of enc_s must be equal to the in_chn of conv.
     """
@@ -38,74 +38,121 @@ class EncPlusConv(nn.Module):
 #
 #
 #     @classmethod
-def set_conv_config(dim1_t, dim1_s, enc_s, chn_t, chn_s, dims):
-    # o = (n - f + 2 * p) / s + 1
-    # f = n - ((o - 1) * s - 2 * p)
-    # p = ((o - 1) * s - n + f)/2
-    if dim1_t == dim1_s:  # no need of conv at all
-        return enc_s
-        # cls.enc_plus_conv = cls.enc_s
-        # return cls.enc_plus_conv
-    elif dim1_t > dim1_s:
-        raise Exception(f'teacher model depth is less than student model, dim1_t: {dim1_t}, dim1_s: {dim1_s}')
-    else:  # teacher model is deeper
-        s = math.ceil(dim1_s / dim1_t) # down sample using stride at first, pad more if over down-sampling
-        conv_sz = s + 1  # conv size should be bigger than stride
-        exprected_in_size = s * (dim1_t - 1) + conv_sz
-        p = math.ceil((exprected_in_size - dim1_s) / 2)
-        if dims == 3:
-            conv = nn.Conv3d(chn_s, chn_t, kernel_size=(conv_sz, conv_sz, conv_sz),
-                             stride=(s, s, s), padding=p)
-        else:
-            conv = nn.Conv2d(chn_s, chn_t, kernel_size=(conv_sz, conv_sz),
-                             stride=(s, s), padding=p)
-        enc_plus_conv = EncPlusConv(enc_s, conv)
+
+
+class EncPlusConv:
+    def __init__(self):
+        self.CORRECT_CONV = False
+        self.chn_t = None
+        self.chn_s = None
+        self.PAD = 1
+        self.dim1_t = None
+        self.dim2_t = None
+        self.dim3_t = None
+
+        self.dim1_s = None
+        self.dim2_s = None
+        self.dim3_s = None
+
+    def set_conv_config(self, enc_s):
+        # print(f'in pad: {self.PAD}')
+
+        # o = (n - f + 2 * p) / s + 1
+        # f = n - ((o - 1) * s - 2 * p)
+        # p = ((o - 1) * s - n + f)/2
+        if self.dim1_t > self.dim1_s:
+            print(f'teacher model depth is less than student model, dim1_t: {self.dim1_t}, dim1_s: {self.dim1_s}')
+            if self.dim1_t >= (1.5 * self.dim1_s):  # need upsampling or transposedconv
+                s = math.ceil(self.dim1_t / self.dim1_s)
+                # down sample using stride at first, pad more if over down-sampling
+                if self.dims == 3:
+                    conv = nn.Sequential(nn.ConvTranspose3d(self.chn_s, self.chn_t, 3, stride=s),
+                                         nn.AdaptiveAvgPool3d((self.dim1_t, self.dim2_t, self.dim3_t)),
+                                         nn.Conv3d(self.chn_t, self.chn_t, kernel_size=3, padding=1))
+                else:
+                    conv = nn.Sequential(nn.ConvTranspose2d(self.chn_s, self.chn_t, 3, stride=s),
+                                         nn.AdaptiveAvgPool2d((self.dim1_t, self.dim2_t)),
+                                         nn.Conv2d(self.chn_t, self.chn_t, kernel_size=3, padding=1))
+            else:
+                if self.dims == 3:
+                    conv = nn.Sequential(nn.AdaptiveAvgPool3d((self.dim1_t, self.dim2_t, self.dim3_t)),
+                                         nn.Conv3d(self.chn_s, self.chn_t, kernel_size=3, padding=1))
+                else:
+                    conv = nn.Sequential(nn.AdaptiveAvgPool2d((self.dim1_t, self.dim2_t)),
+                                         nn.Conv2d(self.chn_s, self.chn_t, kernel_size=3, padding=1))
+
+        else:  # teacher model is deeper
+            s = math.ceil(self.dim1_s / self.dim1_t)  # down sample using stride at first, pad more if over down-sampling
+            conv_sz = s + 1  # conv size should be bigger than stride
+            if self.dims == 3:
+                conv = nn.Sequential(nn.Conv3d(self.chn_s, self.chn_t, kernel_size=conv_sz, stride=s),
+                                     nn.AdaptiveAvgPool3d((self.dim1_t, self.dim2_t, self.dim3_t)),
+                                     nn.Conv3d(self.chn_t, self.chn_t, kernel_size=3, padding=1))
+            else:
+                conv = nn.Sequential(nn.Conv2d(self.chn_s, self.chn_t, kernel_size=conv_sz, stride=s),
+                                     nn.AdaptiveAvgPool2d((self.dim1_t, self.dim2_t)),
+                                     nn.Conv2d(self.chn_t, self.chn_t, kernel_size=3, padding=1))
+
+        enc_plus_conv = EncPlusConvBase(enc_s, conv)
         return enc_plus_conv
+        # else:
+        #     return enc_s
+    def get_enc_plus_conv(self, input_tmp, enc_t: nn.Module, enc_s: nn.Module, dims: int = 3, no_cuda: bool = True):
+        """
+        Chn_in = 1 always here.
+        :param enc_t:
+        :param enc_s:
+        :param dims:
+        :return:
+        """
 
-def get_enc_plus_conv( enc_t: nn.Module, enc_s: nn.Module, dims: int = 3, no_cuda: bool = True):
-    """
-    Chn_in = 1 always here.
-    :param enc_t:
-    :param enc_s:
-    :param dims:
-    :return:
-    """
-    # print(f"cls.enc_t: {cls.enc_t}, cls.enc_s: {cls.enc_s}")
-    # if (cls.no_cuda is None) or (cls.no_cuda != no_cuda) or (cls.enc_t is not enc_t):
+        self.enc_plus_conv = enc_s
+        # while not self.CORRECT_CONV:
+        if dims == 3:
+            # input_tmp = torch.ones((2, 1, 128, 128, 128))
+            if not no_cuda:
+                device = torch.device("cuda")
+                enc_t.to(device)
+                self.enc_plus_conv.to(device)
+                input_tmp = input_tmp.to(device)
+            out_t = enc_t(input_tmp)
+            out_s = self.enc_plus_conv(input_tmp)
+            batch_size, chn_t, dim1_t, dim2_t, dim3_t = out_t.shape
+            batch_size, chn_s, dim1_s, dim2_s, dim3_s = out_s.shape
+        else:
+            # input_tmp = torch.ones((2, 1, 128, 128))
+            if not no_cuda:
+                device = torch.device("cuda")
+                enc_t.to(device)
+                self.enc_plus_conv.to(device)
+                input_tmp = input_tmp.to(device)
+            out_t = enc_t(input_tmp)
+            out_s = self.enc_plus_conv(input_tmp)
+            batch_size, chn_t, dim1_t, dim2_t = out_t.shape
+            batch_size, chn_s, dim1_s, dim2_s = out_s.shape
+        if self.chn_t is None:
+            self.chn_t = chn_t
+            self.chn_s = chn_s
+            self.dim1_t = dim1_t
+            self.dim2_t = dim2_t
+            self.dim3_t = dim3_t if dims==3 else None
 
-    # if :  # when coming encoder is not the same as the stored one
+            self.dim1_s = dim1_s
+            self.dim2_s = dim2_s
+            self.dim3_s = dim3_s if dims==3 else None
 
-    # dims = dims
-    # cls.enc_t = enc_t
-    # cls.enc_s = enc_s
-    # cls.enc_t.cpu()
-    # cls.enc_s.cpu()
-    if dims == 3:
-        input_tmp = torch.ones((2, 1, 128, 128, 128))
-        if not no_cuda:
-            device = torch.device("cuda")
-            enc_t.to(device)
-            enc_s.to(device)
-            input_tmp = input_tmp.to(device)
-        out_t = enc_t(input_tmp)
-        out_s = enc_s(input_tmp)
-        batch_size, chn_t, dim1_t, dim2_t, dim3_t = out_t.shape
-        batch_size, chn_s, dim1_s, dim2_s, dim3_s = out_s.shape
-    else:
-        input_tmp = torch.ones((2, 1, 128, 128))
-        if not no_cuda:
-            device = torch.device("cuda")
-            enc_t.to(device)
-            enc_s.to(device)
-            input_tmp = input_tmp.to(device)
-        out_t = enc_t(input_tmp)
-        out_s = enc_s(input_tmp)
-        batch_size, chn_t, dim1_t, dim2_t = out_t.shape
-        batch_size, chn_s, dim1_s, dim2_s = out_s.shape
+            self.dims = dims
 
-    enc_plus_conv = set_conv_config(dim1_t, dim1_s, enc_s, chn_t, chn_s, dims)
+        # if (dim1_t==dim1_s) and (dim2_t==dim2_s) and (dim3_t==dim3_s) :
+        #     self.CORRECT_CONV = True
+        # else:
+        print(f'config conv because dim1_t: {dim1_t}, dim1_s: {dim1_s}')
+            # print(f'out pad: {self.PAD}')
 
-    return enc_plus_conv
+        self.enc_plus_conv = self.set_conv_config(enc_s)
+
+
+        return self.enc_plus_conv
 
 
 def kd_loss(batch_x: torch.Tensor,

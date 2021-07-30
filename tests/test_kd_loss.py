@@ -9,9 +9,9 @@ import torch
 import torch.nn as nn
 import copy
 from parameterized import parameterized
-from kd_med.kd_loss import kd_loss, get_enc_plus_conv
+from kd_med.kd_loss import kd_loss, EncPlusConv
 from kd_med.pre_trained_enc import pre_trained_enc
-
+import kd_med
 
 class Cnn2_3dEnc(nn.Module):
     def __init__(self, fc1_nodes=1024, fc2_nodes=1024, num_classes: int = 5, base: int = 8, level_node = 0):
@@ -121,8 +121,8 @@ class Vgg11_3dEnc(nn.Module):
 
 dims = 3
 batch_x = torch.rand((2, 1, 96, 96, 64))
-enc_s_ls = [Cnn2_3dEnc()]  # todo: VGG11
-enc_t_name_ls = ['resnet3d_18', 'resnet3d_18', 'resnet3d_34','resnet3d_50', 'resnet3d_101']
+enc_s_ls = [Cnn2_3dEnc(), Vgg11_3dEnc()]  # todo: VGG11 #,,
+enc_t_name_ls = [ 'resnet3d_10', 'resnet3d_18', 'resnet3d_18', 'resnet3d_34','resnet3d_50']
 
 
 
@@ -133,7 +133,7 @@ class Testkd_loss(unittest.TestCase):
         for enc_s in enc_s_ls:
             for enc_t_name in enc_t_name_ls:
                 enc_t = pre_trained_enc(enc_t_name)
-                enc_s_conv = get_enc_plus_conv(enc_t, enc_s, dims)
+                enc_s_conv = EncPlusConv().get_enc_plus_conv(batch_x, enc_t, enc_s, dims)
 
                 enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
                 enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
@@ -154,8 +154,48 @@ class Testkd_loss(unittest.TestCase):
                     if not torch.all(torch.eq(par.data, exp_par.data)).item():
                         NotAllEqual = True
                     self.assertIsNone(par.grad)
-                    self.assertIsNotNone(exp_par.grad)
+                    # self.assertIsNotNone(exp_par.grad)
                 self.assertTrue(NotAllEqual)
+
+    def test_kd_loss_cuda(self):
+        batch_x = torch.rand((2, 1, 96, 96, 64))
+
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            scaler = torch.cuda.amp.GradScaler()
+            for enc_s in enc_s_ls:
+                for enc_t_name in enc_t_name_ls:
+                    print(f'enc_t_name: {enc_t_name}')
+                    enc_t = kd_med.pre_trained_enc(enc_t_name, no_cuda=False)
+                    enc_t.to(device)
+                    enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
+
+                    enc_s_conv = kd_med.EncPlusConv().get_enc_plus_conv(batch_x, enc_t, enc_s, dims, no_cuda=False)
+                    enc_s_conv.to(device)
+                    enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
+
+                    opt = torch.optim.Adam(enc_s_conv.parameters(), lr=0.001)
+
+                    batch_x = batch_x.to(device)
+                    loss = kd_med.kd_loss(batch_x, enc_t, enc_s_conv, cuda=False)
+
+                    opt.zero_grad()
+                    scaler.scale(loss).backward()
+                    scaler.step(opt)
+                    scaler.update()
+
+                    for par, exp_par in zip(enc_t_parameters, enc_t.parameters()):
+                        self.assertTrue(torch.all(torch.eq(par.data, exp_par.data)).item())
+                        self.assertIsNone(par.grad)
+                        self.assertIsNone(exp_par.grad)
+
+                    NotAllEqual = False
+                    for par, exp_par in zip(enc_s_conv_parameters, enc_s_conv.parameters()):
+                        if not torch.all(torch.eq(par.data, exp_par.data)).item():
+                            NotAllEqual = True
+                        self.assertIsNone(par.grad)
+                        self.assertIsNotNone(exp_par.grad)
+                    self.assertTrue(NotAllEqual)
 
 
 

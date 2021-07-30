@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 
 from parameterized import parameterized
-from kd_med.kd_loss import EncPlusConv
+from kd_med.kd_loss import EncPlusConvBase
 
 import numpy as np
 
@@ -27,7 +27,7 @@ class TestEncPlusConv(unittest.TestCase):
     @parameterized.expand([TEST_CASE_3d, TEST_CASE_2d])
     def test_EncPlusConv(self, enc, conv, input_data):
 
-        enc_plus_conv = EncPlusConv(enc, conv)
+        enc_plus_conv = EncPlusConvBase(enc, conv)
         out_enc = enc(input_data)
         out_conv = conv(out_enc)
         out_enc_plus_conv = enc_plus_conv(input_data)

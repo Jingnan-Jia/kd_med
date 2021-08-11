@@ -9,7 +9,9 @@ import torch
 import torch.nn as nn
 import copy
 from parameterized import parameterized
-from kd_med.kd_loss import kd_loss, EncPlusConv
+
+from kd_med.kd_loss import kd_loss
+from kd_med import EncPlusConv
 from kd_med.pre_trained_enc import pre_trained_enc
 import kd_med
 
@@ -133,7 +135,7 @@ class Testkd_loss(unittest.TestCase):
         for enc_s in enc_s_ls:
             for enc_t_name in enc_t_name_ls:
                 enc_t = pre_trained_enc(enc_t_name)
-                enc_s_conv = EncPlusConv().get_enc_plus_conv(batch_x, enc_t, enc_s, dims)
+                enc_s_conv = EncPlusConv(batch_x, enc_t, enc_s, dims).get()
 
                 enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
                 enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
@@ -165,12 +167,12 @@ class Testkd_loss(unittest.TestCase):
             scaler = torch.cuda.amp.GradScaler()
             for enc_s in enc_s_ls:
                 for enc_t_name in enc_t_name_ls:
-                    print(f'enc_t_name: {enc_t_name}')
+                    # print(f'enc_t_name: {enc_t_name}')
                     enc_t = kd_med.pre_trained_enc(enc_t_name, no_cuda=False)
                     enc_t.to(device)
                     enc_t_parameters = copy.deepcopy(list(enc_t.parameters()))
 
-                    enc_s_conv = kd_med.EncPlusConv().get_enc_plus_conv(batch_x, enc_t, enc_s, dims, no_cuda=False)
+                    enc_s_conv = EncPlusConv(batch_x, enc_t, enc_s, dims, no_cuda=False).get()
                     enc_s_conv.to(device)
                     enc_s_conv_parameters = copy.deepcopy(list(enc_s_conv.parameters()))
 

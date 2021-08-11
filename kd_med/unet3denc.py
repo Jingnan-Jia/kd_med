@@ -111,11 +111,11 @@ class OutputTransition(nn.Module):
         return out
 
 
-class UNet3D(nn.Module):
+class UNet3DEnc(nn.Module):
     # the number of convolutions in each layer corresponds
     # to what is in the actual prototxt, not the intent
     def __init__(self, n_class=1, act='relu'):
-        super(UNet3D, self).__init__()
+        super(UNet3DEnc, self).__init__()
 
 
 

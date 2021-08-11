@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 
 from parameterized import parameterized
-from kd_med.kd_loss import EncPlusConvBase
+from kd_med.enc_plus_conv import EncPlusConvBase
 
 import numpy as np
 

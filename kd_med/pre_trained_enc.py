@@ -3,10 +3,8 @@
 # @Author  : Jingnan
 # @Email   : jiajingnan2222@gmail.com
 import torch
-import torch.nn as nn
-from kd_med.get_resnet3d import generate_model
-from kd_med.unet3d import UNet3D
-from kd_med.resnet3d import ResNet
+from kd_med.get_resnet3denc import resnet_by_depth
+from kd_med.unet3denc import UNet3DEnc
 import os
 from collections import OrderedDict
 from google_drive_downloader import GoogleDriveDownloader as gdd
@@ -38,7 +36,7 @@ def download_weights_if_needed(weights_dir: str):
     return None
 
 
-# class UNet3DEnc(UNet3D):
+# class UNet3DEnc(UNet3DEnc):
 #     def __init__(self, output_layer = 'out_up_256'):
 #         super().__init__()
 #         self.output_layer = output_layer
@@ -94,7 +92,7 @@ def pre_trained_enc( net_name: str, no_cuda: bool = True):
         else:
             opt.pretrain_path = weights_dir + "/resnet_" + str(opt.model_depth) + ".pth"  # reset if needed
 
-        enc = generate_model(opt)  # generate resnet encoder
+        enc = resnet_by_depth(opt)  # generate resnet encoder
         # enc = get_enc(enc, 'conv_seg')
         enc.load_state_dict(rename_layers(torch.load(opt.pretrain_path, map_location=torch.device('cpu'))))
 
@@ -102,7 +100,7 @@ def pre_trained_enc( net_name: str, no_cuda: bool = True):
         raise NotImplementedError
     elif 'unet3d' == net_name:
         weights_fpath = weights_dir + '/Genesis_Chest_CT.pt'
-        base_model = UNet3D()  # Unet encoder
+        base_model = UNet3DEnc()  # Unet encoder
 
         # Load pre-trained weights
         checkpoint = torch.load(weights_fpath, map_location=torch.device('cpu'))
@@ -112,7 +110,7 @@ def pre_trained_enc( net_name: str, no_cuda: bool = True):
         #     unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
         all_layers = rename_layers(checkpoint)
         enc_layers = OrderedDict()
-        for key, par in all_layers.items():
+        for key, par in all_layers.items():  # remove the decoder part
             if ('up' not in key) and ('out_tr' not in key):
                 enc_layers[key] = par
         base_model.load_state_dict(enc_layers)
@@ -159,7 +157,7 @@ def pre_trained_enc( net_name: str, no_cuda: bool = True):
 #             opt.pretrain_path = weights_dir + "/resnet_" + str(opt.model_depth) + ".pth"  # reset if needed
 #
 #
-#         enc = generate_model(opt)  # generate resnet encoder
+#         enc = resnet_by_depth(opt)  # generate resnet encoder
 #         # enc = get_enc(enc, 'conv_seg')
 #         enc.load_state_dict(rename_layers(torch.load(opt.pretrain_path)), map_location=torch.device('cpu'))
 #

@@ -10,8 +10,8 @@ import math
 from functools import partial
 
 __all__ = [
-    'ResNet', 'resnet10', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-    'resnet152', 'resnet200'
+    'ResNetEnc', 'resnet10enc', 'resnet18enc', 'resnet34enc', 'resnet50enc', 'resnet101enc',
+    'resnet152enc', 'resnet200enc'
 ]
 
 
@@ -125,7 +125,7 @@ class Bottleneck(nn.Module):
 #                  no_cuda=False):
 #         self.inplanes = 64
 #         self.no_cuda = no_cuda
-#         super(ResNet, self).__init__()
+#         super(ResNetEnc, self).__init__()
 #         self.conv1 = nn.Conv3d(
 #             1,
 #             64,
@@ -218,7 +218,7 @@ class Bottleneck(nn.Module):
 #         return x
 
 
-class ResNet(nn.Module):
+class ResNetEnc(nn.Module):
 
     def __init__(self,
                  block,
@@ -228,7 +228,7 @@ class ResNet(nn.Module):
                  no_cuda=False):
         self.inplanes = 64
         self.no_cuda = no_cuda
-        super(ResNet, self).__init__()
+        super(ResNetEnc, self).__init__()
         self.conv1 = nn.Conv3d(
             1,
             64,
@@ -321,50 +321,50 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet10(**kwargs):
-    """Constructs a ResNet-18 model.
+def resnet10enc(**kwargs):
+    """Constructs a ResNetEnc-18 model.
     """
-    model = ResNet(BasicBlock, [1, 1, 1, 1], **kwargs)
+    model = ResNetEnc(BasicBlock, [1, 1, 1, 1], **kwargs)
     return model
 
 
-def resnet18(**kwargs):
-    """Constructs a ResNet-18 model.
+def resnet18enc(**kwargs):
+    """Constructs a ResNetEnc-18 model.
     """
-    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    model = ResNetEnc(BasicBlock, [2, 2, 2, 2], **kwargs)
     return model
 
 
-def resnet34(**kwargs):
-    """Constructs a ResNet-34 model.
+def resnet34enc(**kwargs):
+    """Constructs a ResNetEnc-34 model.
     """
-    model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
+    model = ResNetEnc(BasicBlock, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def resnet50(**kwargs):
-    """Constructs a ResNet-50 model.
+def resnet50enc(**kwargs):
+    """Constructs a ResNetEnc-50 model.
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    model = ResNetEnc(Bottleneck, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def resnet101(**kwargs):
-    """Constructs a ResNet-101 model.
+def resnet101enc(**kwargs):
+    """Constructs a ResNetEnc-101 model.
     """
-    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
+    model = ResNetEnc(Bottleneck, [3, 4, 23, 3], **kwargs)
     return model
 
 
-def resnet152(**kwargs):
-    """Constructs a ResNet-101 model.
+def resnet152enc(**kwargs):
+    """Constructs a ResNetEnc-101 model.
     """
-    model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
+    model = ResNetEnc(Bottleneck, [3, 8, 36, 3], **kwargs)
     return model
 
 
-def resnet200(**kwargs):
-    """Constructs a ResNet-101 model.
+def resnet200enc(**kwargs):
+    """Constructs a ResNetEnc-101 model.
     """
-    model = ResNet(Bottleneck, [3, 24, 36, 3], **kwargs)
+    model = ResNetEnc(Bottleneck, [3, 24, 36, 3], **kwargs)
     return model

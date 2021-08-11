@@ -4,13 +4,13 @@
 # @Email   : jiajingnan2222@gmail.com
 import torch
 from torch import nn
-import kd_med.resnet3d as resnet
+import kd_med.resnet3denc as resnet
 
-def generate_model(opt):
+def resnet_by_depth(opt):
     """
 
-    :param opt: require following values: model, model_depth, input_W, input_H, input_D,
-    resnet_shortcut, no_cuda, n_seg_classes, phase, pretrain_path
+    :param opt: require following values: model, model_depth,
+    resnet_shortcut, no_cuda, n_seg_classes
     :return:
     """
     assert opt.model in [
@@ -21,37 +21,37 @@ def generate_model(opt):
         assert opt.model_depth in [10, 18, 34, 50, 101, 152, 200]
 
         if opt.model_depth == 10:
-            model = resnet.resnet10(
+            model = resnet.resnet10enc(
                 shortcut_type=opt.resnet_shortcut,
                 no_cuda=opt.no_cuda,
                 num_seg_classes=opt.n_seg_classes)
         elif opt.model_depth == 18:
-            model = resnet.resnet18(
+            model = resnet.resnet18enc(
                 shortcut_type=opt.resnet_shortcut,
                 no_cuda=opt.no_cuda,
                 num_seg_classes=opt.n_seg_classes)
         elif opt.model_depth == 34:
-            model = resnet.resnet34(
+            model = resnet.resnet34enc(
                 shortcut_type=opt.resnet_shortcut,
                 no_cuda=opt.no_cuda,
                 num_seg_classes=opt.n_seg_classes)
         elif opt.model_depth == 50:
-            model = resnet.resnet50(
+            model = resnet.resnet50enc(
                 shortcut_type=opt.resnet_shortcut,
                 no_cuda=opt.no_cuda,
                 num_seg_classes=opt.n_seg_classes)
         elif opt.model_depth == 101:
-            model = resnet.resnet101(
+            model = resnet.resnet101enc(
                 shortcut_type=opt.resnet_shortcut,
                 no_cuda=opt.no_cuda,
                 num_seg_classes=opt.n_seg_classes)
         elif opt.model_depth == 152:
-            model = resnet.resnet152(
+            model = resnet.resnet152enc(
                 shortcut_type=opt.resnet_shortcut,
                 no_cuda=opt.no_cuda,
                 num_seg_classes=opt.n_seg_classes)
         elif opt.model_depth == 200:
-            model = resnet.resnet200(
+            model = resnet.resnet200enc(
                 shortcut_type=opt.resnet_shortcut,
                 no_cuda=opt.no_cuda,
                 num_seg_classes=opt.n_seg_classes)
